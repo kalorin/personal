@@ -14,15 +14,18 @@
         .fail { background-color: red; }
         .clickable { cursor: pointer; background-color: lightgray; }
         .bold { font-weight: bold; }
+        .controls { float:right; }
     </style>
 </head>
 <body>
-    <h1>Up the River Scorekeeper</h1><button onclick="location.reload();">Restart</button>
-    <div id="playerSetup">
-        <h2>Enter Player Names</h2>
-        <button onclick="addPlayers()">Add Players</button>
+    <h1>Up the River Scorekeeper</h1>
+    <div class="controls">
         <button onclick="startGame()" id="startButton" class="hidden">Start Game</button>
-        <ul id="playerList"></ul>
+        <button onclick="location.reload();">Restart</button>
+    </div>
+    <div id="playerSetup">
+        <button onclick="addPlayers()">Add Players</button>
+        <div id="playerList"></div>
     </div>
     <div id="scoreboard" class="hidden">
         <table id="scoreTable">
@@ -53,15 +56,17 @@
                     }
                 });
             }
-            if (players.length > 1) {
-                document.getElementById('startButton').classList.remove('hidden');
+            if (players.length > 0) {
                 playerList = document.getElementById("playerList");
-                playerList.innerHTML = '';
+                playerList.innerHTML = '<h2>Player List</h2>';
                 players.forEach( player => {
-                    let li = document.createElement("li"); // Create a new <li> element
-                    li.textContent = player; // Set the text content
-                    ul.appendChild(li); // Append <li> to <ul>
+                    let h4 = document.createElement("h4"); // Create a new <h4> element
+                    h4.textContent = player; // Set the text content
+                    playerList.appendChild(h4); // Append <h4> to the div
                 });
+            }
+            if( players.length > 1 ) {
+                document.getElementById('startButton').classList.remove('hidden');
             }
         }
 
