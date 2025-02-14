@@ -41,12 +41,16 @@
         function addPlayers() {
             let playerName;
             while (true) {
-                playerName = prompt("Enter player's name (or press Cancel to finish):");
+                playerName = prompt("Enter player name(s) (multiple with commas between each or press Cancel to finish):");
                 if (!playerName) break;
-                if (!players.includes(playerName)) {
-                    players.push(playerName);
-                    scores[playerName] = 0;
-                }
+                let pns = playerName.includes(",") 
+                           ? playerName.split(",").map(p => p.trim())  // Split, trim if comma exists
+                           : [playerName.trim()];  // Use as single value if no comma
+                pns.forEach( pn => {
+                    if (!players.includes(pn)) {
+                        players.push(pn);
+                    }
+                });
             }
             if (players.length > 1) {
                 document.getElementById('startButton').classList.remove('hidden');
