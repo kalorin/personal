@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Up the River Scorekeeper</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; }
+        .hidden { display: none; }
+        table { margin: auto; border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid black; padding: 8px; text-align: center; }
+        th { writing-mode: vertical-lr; transform: rotate(180deg); height: 100px; }
+        .success { background-color: lime; }
+        .fail { background-color: red; }
+        .clickable { cursor: pointer; background-color: lightgray; }
+        .bold { font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>Up the River Scorekeeper</h1>
+    <div id="playerSetup">
+        <h2>Enter Player Names</h2>
+        <button onclick="addPlayers()">Add Players</button>
+        <button onclick="startGame()" id="startButton" class="hidden">Start Game</button>
+    </div>
+    <div id="scoreboard" class="hidden">
+        <table id="scoreTable">
+            <thead id="scoreHeader"></thead>
+            <tbody id="scoreBody"></tbody>
+        </table>
+    </div>
+    <script>
+        let players = [];
+        let hands = [];
+        let bids = {};
+        let scores = {};
+        let currentHand = 0;
+        let dealerIndex = 0;
+        let upDown = 'U'; // 'U' for up, 'D' for down
+
+        function addPlayers() {
+            let playerName;
+            while (true) {
+                playerName = prompt("Enter player's name (or press Cancel to finish):");
+                if (!playerName) break;
+                if (!players.includes(playerName)) {
+                    players.push(playerName);
+                    scores[playerName] = 0;
+                }
+            }
+            if (players.length > 1) {
+                document.getElementById('startButton').classList.remove('hidden');
+            }
+        }
+
+        function startGame() {
+            if (players.length < 2) return alert("There aren't enough players to play, add more players!");
+            document.getElementById('playerSetup').classList.add('hidden');
+            document.getElementById('scoreboard').classList.remove('hidden');
+            // set up the player bids and scores 
+            for (let player of players) {
+                bids[player] = {};
+                scores[player] = {};
+            }
+            dealerIndex = 0;
+            // set up the hands
+            handNumber = 1;
+            while( true ) {
+                if( upDown === 'U' ) {
+                    hands.push(`${upDown}${handNumber}`);
+                    if( (players.length * handNumber) + players.length > 51 ) {
+                        upDown = 'D';
+                    } else {
+                        handNumber += 1;
+                    }
+                } else {
+                    handNumber--;
+                    if( handNumber === 0 ) break;
+                    hands.push(`${upDown}${handNumber}`);
+                }
+            }
+            currentHand = 0;
+            drawScoreboard();
+        }
+
+        // return the total score for the player
+        function getPlayerScore(player) {
+            total = 0;
+            for( let hand of hands ) {
+                total += scores[player][hand] || 0;
+            }
+            return total;
+        }
+
+        // return the rank of the player
+        function getPlayerRank(player) {
+            let rank = 1;
+            let playerScore = getPlayerScore(player);
+            for( let otherPlayer of players ) {
+                if( otherPlayer === player ) continue;
+                if( getPlayerScore(otherPlayer) > playerScore ) rank++;
+            }
+            return rank;
+        }
+
+        // draw the scoreboard
+        function drawScoreboard() {
+            let scoreHeader = document.getElementById('scoreHeader');
+            scoreHeader.innerHTML = '';
+            let row = document.createElement('tr');
+            let handHeader = document.createElement('th');
+            handHeader.textContent = 'Hand';
+            row.appendChild(handHeader);
+            let bidHeader = document.createElement('th');
+            bidHeader.textContent = 'Bids';
+            row.appendChild(bidHeader);
+            players.map(player => {
+                let playerHeader = document.createElement('th');
+                playerRank = getPlayerRank(player);
+                playerScore = getPlayerScore(player);
+                playerHeader.innerHTML = `<span class='bold'>${player}: ${playerScore}</span><br><span class='bold'>[${playerRank}]</span>`;
+                row.appendChild(playerHeader);
+            });
+            scoreHeader.appendChild(row);
+
+            let scoreBody = document.getElementById('scoreBody');
+            scoreBody.innerHTML = '';
+
+            for (let i = 0; i < hands.length; i++) {
+                let hand = hands[i];
+                let row = document.createElement('tr');
+
+                let handCell = document.createElement('td');
+                handCell.innerHTML = `${hand} <button id='bid-button-${hand}' class='hidden' onclick='enterBids("${hand}")'>B</button> <button id='score-button-${hand}' class='hidden' onclick='enterScores("${hand}")'>S</button>`;
+                row.appendChild(handCell);
+
+                let bidCell = document.createElement('td');
+                totalBids = 0;
+                players.map(p => {
+                    totalBids += bids[p][hand] || 0;
+                });
+                bidCell.textContent = `[${totalBids}]`;
+                row.appendChild(bidCell);
+              
+                players.forEach(player => {
+                    let playerCell = document.createElement('td');
+                    playerCell.id = `${player}-${hand}`;
+                    playerCell.textContent = '';
+                    if( bids[player][hand] !== undefined ) {
+                        playerCell.innerHTML = `[${bids[player][hand]}]`;
+                    }
+                    if( scores[player][hand] !== undefined ) {
+                        playerCell.innerHTML = `[${bids[player][hand]}] <b>${scores[player][hand]}</b>`;
+                        if( scores[player][hand] == (10 + bids[player][hand]) ) {
+                            playerCell.classList.add('success');
+                        } else {
+                            playerCell.classList.add('fail');
+                        }
+                    }
+                    row.appendChild(playerCell);
+                });
+                scoreBody.appendChild(row);
+            }
+            for( let i = 0; i < hands.length; i++ ) {
+                let hand = hands[i];
+                if( i === currentHand ) {
+                    if( scores[players[0]][hand] === undefined ) {
+                        document.getElementById(`bid-button-${hand}`).classList.remove('hidden');
+                        if( i > 0 && bids[players[0]][hand] === undefined ) {
+                            document.getElementById(`score-button-${hands[i-1]}`).classList.remove('hidden');
+                        }
+                    }
+                    if( bids[players[0]][hand] !== undefined) {
+                        document.getElementById(`score-button-${hand}`).classList.remove('hidden');
+                    }
+                }
+            }
+
+        }
+
+        function enterBids(handNumber) {
+            let digits = handNumber.match(/\d+/);
+            let totalTricks = digits ? parseInt(digits[0]) : 0;
+            totalBids = 0;
+            for (let i = 0; i < players.length; i++) {
+                let player = players[(dealerIndex + 1 + i) % players.length];
+                let bid;
+                while (true) {
+                    bid = prompt(`Bids: ${totalBids}/${totalTricks}   ${player}, enter your bid:`);
+                    if (bid === null) return;
+                    bid = parseInt(bid);
+                    if (isNaN(bid) || bid > totalTricks || bid < 0 ) {
+                        alert("Invalid bid. Must be a number between 0 and total tricks in hand.");
+                        continue;
+                    }
+                    if (i === players.length - 1 && totalBids + bid === totalTricks) {
+                        alert("Invalid bid. Last player's bid cannot make total equal tricks in hand.");
+                        continue;
+                    }
+                    break;
+                }
+                bids[player][handNumber] = bid;
+                totalBids += bid;
+                document.getElementById(`${player}-${handNumber}`).textContent = `[${bid}]`;
+            }
+            drawScoreboard();
+        }
+
+        function enterScores(handNumber) {
+            if( bids[players[0]][handNumber] == undefined ) return alert("Bids must be entered first!");
+            if( scores[players[0]][handNumber] !== undefined ) {
+                dealerIndex--; // increment this down so the right player is asked first
+                currentHand--; // increment this down so it doesn't move forward
+            }
+            let digits = handNumber.match(/\d+/);
+            let totalTricks = digits ? parseInt(digits[0]) : 0;
+            let totalTrickTaken = 0;
+            let bidsMade = 0;
+            for (let i = 0; i < players.length; i++) {
+                let player = players[(dealerIndex + 1 + i) % players.length];
+                let bid = bids[player][handNumber];
+                let madeBid = confirm(`${player}, did you make your bid of ${bid}?   (Ok = yes, Cancel = no)`);
+                let score = madeBid ? (10 + bid) : 0;
+                scores[player][handNumber] = score;
+                totalTrickTaken += madeBid ? bid : 0;
+                bidsMade += madeBid ? 1 : 0;
+            }
+            currentHand++;
+            dealerIndex++;
+            if( bidsMade == players.length ) {
+                alert('It is not possible for all players to made their bids, re-enter scores.');
+                drawScoreboard();
+                enterScores(handNumber);
+            }
+            if( totalTrickTaken > totalTricks || bidsMade == players.length) {
+                alert(`Total tricks taken: (${totalTrickTaken}) exceeded tricks in hand: (${totalTricks}), re-enter scores.`);
+                drawScoreboard();
+                enterScores(handNumber);
+            }
+            drawScoreboard();
+        }
+    </script>
+</body>
+</html>
