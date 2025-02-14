@@ -17,11 +17,12 @@
     </style>
 </head>
 <body>
-    <h1>Up the River Scorekeeper</h1>
+    <h1>Up the River Scorekeeper</h1><button onclick="location.reload();">Restart</button>
     <div id="playerSetup">
         <h2>Enter Player Names</h2>
         <button onclick="addPlayers()">Add Players</button>
         <button onclick="startGame()" id="startButton" class="hidden">Start Game</button>
+        <ul id="playerList"></ul>
     </div>
     <div id="scoreboard" class="hidden">
         <table id="scoreTable">
@@ -54,6 +55,13 @@
             }
             if (players.length > 1) {
                 document.getElementById('startButton').classList.remove('hidden');
+                playerList = document.getElementById("playerList");
+                playerList.innerHTML = '';
+                players.forEach( player => {
+                    let li = document.createElement("li"); // Create a new <li> element
+                    li.textContent = player; // Set the text content
+                    ul.appendChild(li); // Append <li> to <ul>
+                });
             }
         }
 
