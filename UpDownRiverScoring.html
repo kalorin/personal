@@ -14,14 +14,23 @@
         .fail { background-color: red; }
         .clickable { cursor: pointer; background-color: lightgray; }
         .bold { font-weight: bold; }
-        .controls { float:right; }
+        .controls { float: right; }
+        .clearfix::after { content: ""; clear: both; display: table; }
+        .modal { display: none; position: fixed; z-index: 1; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgb(0,0,0); background-color: rgba(0,0,0,0.4); }
+        .modal-content { background-color: #fefefe; margin: 15% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 400px; }
+        .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; }
+        .close:hover, .close:focus { color: black; text-decoration: none; cursor: pointer; }
+        .bid-buttons { display: flex; flex-wrap: wrap; justify-content: center; }
+        .bid-buttons button { margin: 5px; padding: 10px 20px; font-size: 18px; }
     </style>
 </head>
 <body>
-    <h1>Up the River Scorekeeper</h1>
-    <div class="controls">
-        <button onclick="startGame()" id="startButton" class="hidden">Start Game</button>
-        <button onclick="location.reload();">Restart</button>
+    <div class="clearfix">
+        <h1 style="float: left;">Up the River Scorekeeper</h1>
+        <div class="controls">
+            <button onclick="startGame()" id="startButton" class="hidden">Start Game</button>
+            <button onclick="location.reload();">Restart</button>
+        </div>
     </div>
     <div id="playerSetup">
         <button onclick="addPlayers()">Add Players</button>
@@ -33,6 +42,28 @@
             <tbody id="scoreBody"></tbody>
         </table>
     </div>
+
+    <!-- Modal for Bids -->
+    <div id="bidModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('bidModal')">&times;</span>
+            <p id="bidModalText"></p>
+            <div class="bid-buttons">
+                <!-- Buttons for bids 0-9 -->
+                <button onclick="submitBid(0)">0</button>
+                <button onclick="submitBid(1)">1</button>
+                <button onclick="submitBid(2)">2</button>
+                <button onclick="submitBid(3)">3</button>
+                <button onclick="submitBid(4)">4</button>
+                <button onclick="submitBid(5)">5</button>
+                <button onclick="submitBid(6)">6</button>
+                <button onclick="submitBid(7)">7</button>
+                <button onclick="submitBid(8)">8</button>
+                <button onclick="submitBid(9)">9</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let players = [];
         let hands = [];
@@ -41,6 +72,9 @@
         let currentHand = 0;
         let dealerIndex = 0;
         let upDown = 'U'; // 'U' for up, 'D' for down
+        let currentPlayerIndex = 0;
+        let currentHandNumber = 0;
+        let totalBids = 0;
 
         function addPlayers() {
             let playerName;
@@ -196,31 +230,48 @@
         }
 
         function enterBids(handNumber) {
-            let digits = handNumber.match(/\d+/);
-            let totalTricks = digits ? parseInt(digits[0]) : 0;
+            currentHandNumber = handNumber;
+            currentPlayerIndex = 0;
             totalBids = 0;
-            for (let i = 0; i < players.length; i++) {
-                let player = players[(dealerIndex + 1 + i) % players.length];
-                let bid;
-                while (true) {
-                    bid = prompt(`Bids: ${totalBids}/${totalTricks}   ${player}, enter your bid:`);
-                    if (bid === null) return;
-                    bid = parseInt(bid);
-                    if (isNaN(bid) || bid > totalTricks || bid < 0 ) {
-                        alert("Invalid bid. Must be a number between 0 and total tricks in hand.");
-                        continue;
-                    }
-                    if (i === players.length - 1 && totalBids + bid === totalTricks) {
-                        alert("Invalid bid. Last player's bid cannot make total equal tricks in hand.");
-                        continue;
-                    }
-                    break;
-                }
-                bids[player][handNumber] = bid;
-                totalBids += bid;
-                document.getElementById(`${player}-${handNumber}`).textContent = `[${bid}]`;
+            showModal('bidModal');
+        }
+
+        function showModal(modalId) {
+            let player = players[(dealerIndex + 1 + currentPlayerIndex) % players.length];
+            let digits = currentHandNumber.match(/\d+/);
+            let totalTricks = digits ? parseInt(digits[0]) : 0;
+            if (modalId === 'bidModal') {
+                document.getElementById('bidModalText').innerHTML = `<b>${player}</b>, enter your bid:<br>Total Bids: ${totalBids}/${totalTricks}`;
             }
-            drawScoreboard();
+            document.getElementById(modalId).style.display = 'block';
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        function submitBid(bid) {
+            let player = players[(dealerIndex + 1 + currentPlayerIndex) % players.length];
+            let digits = currentHandNumber.match(/\d+/);
+            let totalTricks = digits ? parseInt(digits[0]) : 0;
+            if (isNaN(bid) || bid > totalTricks || bid < 0) {
+                alert("Invalid bid. Must be a number between 0 and total tricks in hand.");
+                return;
+            }
+            if (currentPlayerIndex === players.length - 1 && totalBids + bid === totalTricks) {
+                alert("Invalid bid. Last player's bid cannot make total equal tricks in hand.");
+                return;
+            }
+            bids[player][currentHandNumber] = bid;
+            totalBids += bid;
+            document.getElementById(`${player}-${currentHandNumber}`).textContent = `[${bid}]`;
+            currentPlayerIndex++;
+            if (currentPlayerIndex < players.length) {
+                showModal('bidModal');
+            } else {
+                closeModal('bidModal');
+                drawScoreboard();
+            }
         }
 
         function enterScores(handNumber) {
