@@ -20,8 +20,14 @@
         .modal-content { background-color: #fefefe; margin: 15% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 400px; }
         .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; }
         .close:hover, .close:focus { color: black; text-decoration: none; cursor: pointer; }
-        .bid-buttons { display: flex; flex-wrap: wrap; justify-content: center; }
-        .bid-buttons button { margin: 5px; padding: 10px 20px; font-size: 18px; }
+        .bid-buttons, .score-buttons { display: flex; flex-wrap: wrap; justify-content: center; }
+        .bid-buttons button, .score-buttons button { margin: 5px; padding: 10px 20px; font-size: 18px; }
+        .score-buttons .yes { background-color: lime; }
+        .score-buttons .no { background-color: red; }
+        .gold { background-color: gold; }
+        .silver { background-color: silver; }
+        .bronze { background-color: #cd7f32; }
+        .dealer { border-bottom: 10px solid blue; border-top: 10px solid blue;}
     </style>
 </head>
 <body>
@@ -60,6 +66,19 @@
                 <button onclick="submitBid(7)">7</button>
                 <button onclick="submitBid(8)">8</button>
                 <button onclick="submitBid(9)">9</button>
+                <button onclick="submitBid(10)">10</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Scores -->
+    <div id="scoreModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('scoreModal')">&times;</span>
+            <p id="scoreModalText"></p>
+            <div class="score-buttons">
+                <button class="yes" onclick="submitScore(true)">Yes</button>
+                <button class="no" onclick="submitScore(false)">No</button>
             </div>
         </div>
     </div>
@@ -75,6 +94,7 @@
         let currentPlayerIndex = 0;
         let currentHandNumber = 0;
         let totalBids = 0;
+        let totalTricksClaimed = 0;
 
         function addPlayers() {
             let playerName;
@@ -85,8 +105,8 @@
                            ? playerName.split(",").map(p => p.trim())  // Split, trim if comma exists
                            : [playerName.trim()];  // Use as single value if no comma
                 pns.forEach( pn => {
-                    if (!players.includes(pn)) {
-                        players.push(pn);
+                    if (!players.includes(toProperCase(pn))) {
+                        players.push(toProperCase(pn));
                     }
                 });
             }
@@ -165,11 +185,17 @@
             let bidHeader = document.createElement('th');
             bidHeader.textContent = 'Bids';
             row.appendChild(bidHeader);
-            players.map(player => {
+            players.map((player, index) => {
                 let playerHeader = document.createElement('th');
-                playerRank = getPlayerRank(player);
-                playerScore = getPlayerScore(player);
-                playerHeader.innerHTML = `<span class='bold'>${player}: ${playerScore}</span><br><span class='bold'>[${playerRank}]</span>`;
+                let playerRank = getPlayerRank(player);
+                let playerScore = getPlayerScore(player);
+                let playerClass = '';
+                if (playerRank === 1) playerClass = 'gold';
+                else if (playerRank === 2) playerClass = 'silver';
+                else if (playerRank === 3) playerClass = 'bronze';
+                if (index === dealerIndex) playerClass += ' dealer';
+                playerHeader.className = playerClass.trim();
+                playerHeader.innerHTML = `<span class='bold'>${toProperCase(player)}: ${playerScore}</span><br><span class='bold'>[${playerRank}]</span>`;
                 row.appendChild(playerHeader);
             });
             scoreHeader.appendChild(row);
@@ -242,6 +268,8 @@
             let totalTricks = digits ? parseInt(digits[0]) : 0;
             if (modalId === 'bidModal') {
                 document.getElementById('bidModalText').innerHTML = `<b>${player}</b>, enter your bid:<br>Total Bids: ${totalBids}/${totalTricks}`;
+            } else if (modalId === 'scoreModal') {
+                document.getElementById('scoreModalText').innerHTML = `${player}, did you make your bid of ${bids[player][currentHandNumber]}?`;
             }
             document.getElementById(modalId).style.display = 'block';
         }
@@ -280,32 +308,58 @@
                 dealerIndex--; // increment this down so the right player is asked first
                 currentHand--; // increment this down so it doesn't move forward
             }
-            let digits = handNumber.match(/\d+/);
+            currentHandNumber = handNumber;
+            currentPlayerIndex = 0;
+            totalTricksClaimed = 0; // Reset total tricks claimed
+            showScoreModal();
+        }
+
+        function showScoreModal() {
+            let player = players[(dealerIndex + 1 + currentPlayerIndex) % players.length];
+            document.getElementById('scoreModalText').innerHTML = `${player}, did you make your bid of ${bids[player][currentHandNumber]}?`;
+            document.getElementById('scoreModal').style.display = 'block';
+        }
+
+        function submitScore(madeBid) {
+            let player = players[(dealerIndex + 1 + currentPlayerIndex) % players.length];
+            let bid = bids[player][currentHandNumber];
+            let digits = currentHandNumber.match(/\d+/);
             let totalTricks = digits ? parseInt(digits[0]) : 0;
-            let totalTrickTaken = 0;
-            let bidsMade = 0;
-            for (let i = 0; i < players.length; i++) {
-                let player = players[(dealerIndex + 1 + i) % players.length];
-                let bid = bids[player][handNumber];
-                let madeBid = confirm(`${player}, did you make your bid of ${bid}?   (Ok = yes, Cancel = no)`);
-                let score = madeBid ? (10 + bid) : 0;
-                scores[player][handNumber] = score;
-                totalTrickTaken += madeBid ? bid : 0;
-                bidsMade += madeBid ? 1 : 0;
+            if (madeBid) {
+                totalTricksClaimed += bid;
+                if (totalTricksClaimed > totalTricks) {
+                    alert("Total tricks claimed exceed the total tricks available. Please re-enter scores.");
+                    totalTricksClaimed -= bid; // Revert the addition
+                    return;
+                }
             }
-            currentHand++;
-            dealerIndex++;
-            if( bidsMade == players.length ) {
-                alert('It is not possible for all players to made their bids, re-enter scores.');
+            let score = madeBid ? (10 + bid) : 0;
+            scores[player][currentHandNumber] = score;
+            currentPlayerIndex++;
+            if (currentPlayerIndex < players.length) {
+                showScoreModal();
+            } else {
+                // Edge case: All players bid zero and claim to have made their bids
+                let allBidsZero = players.every(player => bids[player][currentHandNumber] === 0);
+                let allMadeBids = players.every(player => scores[player][currentHandNumber] !== 0);
+                if (allBidsZero && allMadeBids) {
+                    alert("All players cannot bid zero and make their bids. Please re-enter scores.");
+                    totalTricksClaimed = 0; // Reset total tricks claimed
+                    currentPlayerIndex = 0; // Reset player index
+                    showScoreModal();
+                    return;
+                }
+                closeModal('scoreModal');
+                currentHand++;
+                dealerIndex++;
                 drawScoreboard();
-                enterScores(handNumber);
             }
-            if( totalTrickTaken > totalTricks || bidsMade == players.length) {
-                alert(`Total tricks taken: (${totalTrickTaken}) exceeded tricks in hand: (${totalTricks}), re-enter scores.`);
-                drawScoreboard();
-                enterScores(handNumber);
-            }
-            drawScoreboard();
+        }
+
+        function toProperCase(str) {
+            return str.replace(/\w\S*/g, function(txt) {
+                return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+            });
         }
     </script>
 </body>
