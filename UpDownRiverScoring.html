@@ -5,13 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Up the River Scorekeeper</title>
     <style>
+        #scoreboard {max-height: 70vh; overflow-y: auto; border: 1px solid black; display: block; }
+        #scoreTable { width: 100%; border-collapse: collapse; }
+        #scoreTable thead { position: sticky; top: 0; background-color: white; z-index: 10;}
         body { font-family: Arial, sans-serif; text-align: center; }
         .hidden { display: none; }
         table { margin: auto; border-collapse: collapse; width: 100%; }
         th, td { border: 1px solid black; padding: 8px; text-align: center; }
-        th { writing-mode: vertical-lr; transform: rotate(180deg); height: 100px; }
-        .success { background-color: lime; }
-        .fail { background-color: red; }
+        th { height: 100px; vertical-align: middle; align-items: center; padding: 10px;}
+        button { font-weight: bold; height: 40px; min-width: 75px; display: block; margin: auto; }
+        .playerHeader { writing-mode: vertical-lr; vertical-align: middle; text-align: center; justify-content: center; white-space: nowrap; min-width: 75px; margin: 0 auto; }
+        .strong { font-size: 1.3em; font-weight: bold; color: red; }
+        .success { background: linear-gradient( 90deg, white, lime ); }
+        .fail { background: linear-gradient( 90deg, white, red ); }
         .clickable { cursor: pointer; background-color: lightgray; }
         .bold { font-weight: bold; }
         .controls { float: right; }
@@ -24,10 +30,13 @@
         .bid-buttons button, .score-buttons button { margin: 5px; padding: 10px 20px; font-size: 18px; }
         .score-buttons .yes { background-color: lime; }
         .score-buttons .no { background-color: red; }
-        .gold { background-color: gold; }
-        .silver { background-color: silver; }
-        .bronze { background-color: #cd7f32; }
-        .dealer { border-bottom: 10px solid blue; border-top: 10px solid blue;}
+        .green { background: radial-gradient(ellipse, white, green); }
+        .gold { background: radial-gradient(ellipse, white, gold ); }
+        .silver { background: radial-gradient(ellipse, white, silver ); }
+        .bronze { background: radial-gradient(ellipse, white, #cd7f32); }
+        .poop { background: radial-gradient(ellipse, white, rgb(128, 62, 0)); }
+        .rank { font-size: 32pt; transform: rotate(0deg); }
+        .dealer { box-shadow: 2px 5px 5px blue, 3px 3px 30px blue; z-index: 3; position: relative}
     </style>
 </head>
 <body>
@@ -43,10 +52,12 @@
         <div id="playerList"></div>
     </div>
     <div id="scoreboard" class="hidden">
-        <table id="scoreTable">
-            <thead id="scoreHeader"></thead>
-            <tbody id="scoreBody"></tbody>
-        </table>
+        <div id="scoreboardContainer">
+            <table id="scoreTable">
+                <thead id="scoreHeader"></thead>
+                <tbody id="scoreBody"></tbody>
+            </table>
+        </div>
     </div>
 
     <!-- Modal for Bids -->
@@ -56,17 +67,17 @@
             <p id="bidModalText"></p>
             <div class="bid-buttons">
                 <!-- Buttons for bids 0-9 -->
-                <button onclick="submitBid(0)">0</button>
-                <button onclick="submitBid(1)">1</button>
-                <button onclick="submitBid(2)">2</button>
-                <button onclick="submitBid(3)">3</button>
-                <button onclick="submitBid(4)">4</button>
-                <button onclick="submitBid(5)">5</button>
-                <button onclick="submitBid(6)">6</button>
-                <button onclick="submitBid(7)">7</button>
-                <button onclick="submitBid(8)">8</button>
-                <button onclick="submitBid(9)">9</button>
-                <button onclick="submitBid(10)">10</button>
+                <button id='bid-modal-0'>0</button>
+                <button id='bid-modal-1'>1</button>
+                <button id='bid-modal-2'>2</button>
+                <button id='bid-modal-3'>3</button>
+                <button id='bid-modal-4'>4</button>
+                <button id='bid-modal-5'>5</button>
+                <button id='bid-modal-6'>6</button>
+                <button id='bid-modal-7'>7</button>
+                <button id='bid-modal-8'>8</button>
+                <button id='bid-modal-9'>9</button>
+                <button id='bid-modal-10'>10</button>
             </div>
         </div>
     </div>
@@ -77,8 +88,8 @@
             <span class="close" onclick="closeModal('scoreModal')">&times;</span>
             <p id="scoreModalText"></p>
             <div class="score-buttons">
-                <button class="yes" onclick="submitScore(true)">Yes</button>
-                <button class="no" onclick="submitScore(false)">No</button>
+                <button id='score-modal-yes' class="yes">Yes</button>
+                <button id='score-modal-no' class="no">No</button>
             </div>
         </div>
     </div>
@@ -91,10 +102,6 @@
         let currentHand = 0;
         let dealerIndex = 0;
         let upDown = 'U'; // 'U' for up, 'D' for down
-        let currentPlayerIndex = 0;
-        let currentHandNumber = 0;
-        let totalBids = 0;
-        let totalTricksClaimed = 0;
 
         function addPlayers() {
             let playerName;
@@ -154,6 +161,14 @@
             drawScoreboard();
         }
 
+        function getTotalBids( handNumber ) {
+            total = 0;
+            for( let player of players ) {
+                total += bids[player][handNumber] || 0;
+            }
+            return total;
+        }
+
         // return the total score for the player
         function getPlayerScore(player) {
             total = 0;
@@ -180,22 +195,34 @@
             scoreHeader.innerHTML = '';
             let row = document.createElement('tr');
             let handHeader = document.createElement('th');
+            handHeader.classList.add("green");
             handHeader.textContent = 'Hand';
             row.appendChild(handHeader);
             let bidHeader = document.createElement('th');
+            bidHeader.classList.add("green");
             bidHeader.textContent = 'Bids';
             row.appendChild(bidHeader);
             players.map((player, index) => {
                 let playerHeader = document.createElement('th');
                 let playerRank = getPlayerRank(player);
                 let playerScore = getPlayerScore(player);
-                let playerClass = '';
-                if (playerRank === 1) playerClass = 'gold';
-                else if (playerRank === 2) playerClass = 'silver';
-                else if (playerRank === 3) playerClass = 'bronze';
-                if (index === dealerIndex) playerClass += ' dealer';
-                playerHeader.className = playerClass.trim();
-                playerHeader.innerHTML = `<span class='bold'>${toProperCase(player)}: ${playerScore}</span><br><span class='bold'>[${playerRank}]</span>`;
+                playerHeader.classList.add("playerHeader");
+                if (playerRank === 1) {
+                    playerHeader.innerHTML = "<span class='rank'>&#x1F947</span>";
+                    playerHeader.classList.add("gold");
+                } else if (playerRank === 2 && players.length > 2) {
+                    playerHeader.innerHTML = "<span class='rank'>&#x1F948</span>";
+                    playerHeader.classList.add("silver");
+                } else if (playerRank === 3 && players.length > 3) {
+                    playerHeader.innerHTML = "<span class='rank'>&#x1F949</span>";
+                    playerHeader.classList.add("bronze");
+                } 
+                if ( playerRank === players.length ) {
+                    playerHeader.innerHTML = "<span class='rank'>&#x1F4A9</span>";
+                    playerHeader.classList.add("poop");
+                }
+                playerHeader.innerHTML += `<br><span class='playerName'>${toProperCase(player)}: ${playerScore}</span>`;
+                if (index === dealerIndex) playerHeader.classList.add("dealer");
                 row.appendChild(playerHeader);
             });
             scoreHeader.appendChild(row);
@@ -208,7 +235,7 @@
                 let row = document.createElement('tr');
 
                 let handCell = document.createElement('td');
-                handCell.innerHTML = `${hand} <button id='bid-button-${hand}' class='hidden' onclick='enterBids("${hand}")'>B</button> <button id='score-button-${hand}' class='hidden' onclick='enterScores("${hand}")'>S</button>`;
+                handCell.innerHTML = `<button id='hand-button-${hand}' onclick='enterInfo("${hand}")'>${hand}</button>`;
                 row.appendChild(handCell);
 
                 let bidCell = document.createElement('td');
@@ -216,18 +243,17 @@
                 players.map(p => {
                     totalBids += bids[p][hand] || 0;
                 });
-                bidCell.textContent = `[${totalBids}]`;
+                bidCell.innerHTML = `<b>[${totalBids}]</b>`;
                 row.appendChild(bidCell);
               
                 players.forEach(player => {
                     let playerCell = document.createElement('td');
                     playerCell.id = `${player}-${hand}`;
-                    playerCell.textContent = '';
                     if( bids[player][hand] !== undefined ) {
-                        playerCell.innerHTML = `[${bids[player][hand]}]`;
+                        playerCell.innerHTML = `<button onclick='updateBid("${player}", "${hand}")'>[${bids[player][hand]}]</button>`;
                     }
                     if( scores[player][hand] !== undefined ) {
-                        playerCell.innerHTML = `[${bids[player][hand]}] <b>${scores[player][hand]}</b>`;
+                        playerCell.innerHTML = `<button id='${player}-${hand}' onclick='updateScore("${player}", "${hand}")'>${scores[player][hand]} [${bids[player][hand]}]</button>`;
                         if( scores[player][hand] == (10 + bids[player][hand]) ) {
                             playerCell.classList.add('success');
                         } else {
@@ -238,129 +264,139 @@
                 });
                 scoreBody.appendChild(row);
             }
-            for( let i = 0; i < hands.length; i++ ) {
-                let hand = hands[i];
-                if( i === currentHand ) {
-                    if( scores[players[0]][hand] === undefined ) {
-                        document.getElementById(`bid-button-${hand}`).classList.remove('hidden');
-                        if( i > 0 && bids[players[0]][hand] === undefined ) {
-                            document.getElementById(`score-button-${hands[i-1]}`).classList.remove('hidden');
-                        }
-                    }
-                    if( bids[players[0]][hand] !== undefined) {
-                        document.getElementById(`score-button-${hand}`).classList.remove('hidden');
-                    }
-                }
-            }
-
         }
 
-        function enterBids(handNumber) {
-            currentHandNumber = handNumber;
-            currentPlayerIndex = 0;
+        function enterInfo(handNumber) {
+            handIndex = hands.indexOf(handNumber);
+            prevHand = handIndex > 0 ? hands[handIndex - 1] : null;
+            nextHand = handIndex < hands.length ? hands[handIndex+1] : null;
+            if( bids[players[0]][handNumber] === undefined &&
+              ( prevHand === null || bids[players[0]][prevHand] !== undefined ) &&
+              ( nextHand === null || bids[players[0]][nextHand] === undefined ) ) {
+                enterBids(handNumber);
+            } else
+            if( scores[players[0]][handNumber] === undefined &&
+              ( prevHand === null || scores[players[0]][prevHand] !== undefined ) &&
+              ( nextHand === null || scores[players[0]][nextHand] === undefined ) ) {
+                enterScores(handNumber);
+            }
+        }
+
+        async function enterBids(handNumber) {
             totalBids = 0;
-            showModal('bidModal');
-        }
+            let firstBidder = dealerIndex + 1;
+            if( firstBidder > players.length - 1  ) firstBidder = 0;
+            bidders = players.slice(firstBidder).concat(players.slice(0, firstBidder))
+            for( bidder of bidders ) {
+                if( bidder === bidders.at(-1)) {
+                    await updateBid( bidder, handNumber, true);
+                } else {
+                    await updateBid( bidder, handNumber, false);
+                }
 
-        function showModal(modalId) {
-            let player = players[(dealerIndex + 1 + currentPlayerIndex) % players.length];
-            let digits = currentHandNumber.match(/\d+/);
-            let totalTricks = digits ? parseInt(digits[0]) : 0;
-            if (modalId === 'bidModal') {
-                document.getElementById('bidModalText').innerHTML = `<b>${player}</b>, enter your bid:<br>Total Bids: ${totalBids}/${totalTricks}`;
-            } else if (modalId === 'scoreModal') {
-                document.getElementById('scoreModalText').innerHTML = `${player}, did you make your bid of ${bids[player][currentHandNumber]}?`;
             }
-            document.getElementById(modalId).style.display = 'block';
+            closeModal('bidModal');
         }
 
-        function closeModal(modalId) {
-            document.getElementById(modalId).style.display = 'none';
+        async function updateBid(player, handNumber, last) {
+            return new Promise( resolve => {
+                let digits = handNumber.match(/\d+/);
+                let totalTricks = digits ? parseInt(digits[0]) : 0;
+                let totalBids = getTotalBids( handNumber );
+
+                modalText = document.getElementById('bidModalText');
+                modalText.innerHTML = `<b style="strong">${player}</b>, enter  your bid:<br>Total Bids: <b>${totalBids} / ${totalTricks}</b>`;
+                modal = document.getElementById('bidModal');
+                modal.style.display = 'block';
+
+                for( let i = 0; i <= 10; i++ ) {
+                    bidButton = document.getElementById("bid-modal-" + i);
+                    if( i <= totalTricks && ( ! last || last && totalBids + i !== totalTricks ) ) {
+                        bidButton.onclick = () => {
+                            bids[player][handNumber] = i;
+                            closeModal('bidModal');
+                            resolve();
+                        };
+                        bidButton.style.display = "block";
+                    } else {
+                        bidButton.style.display = "none";
+                    }
+                }
+            });
         }
 
-        function submitBid(bid) {
-            let player = players[(dealerIndex + 1 + currentPlayerIndex) % players.length];
-            let digits = currentHandNumber.match(/\d+/);
-            let totalTricks = digits ? parseInt(digits[0]) : 0;
-            if (isNaN(bid) || bid > totalTricks || bid < 0) {
-                alert("Invalid bid. Must be a number between 0 and total tricks in hand.");
+        function isAllPlayersMadeBid(handNumber) {
+            let allMadeBid = players.every(player => scores[player][handNumber] === (10 + bids[player][handNumber]));
+            return allMadeBid;
+        }
+
+        async function enterScores(handNumber) {
+            let firstScore = dealerIndex + 1;
+            if (firstScore > players.length - 1) firstScore = 0;
+            scorers = players.slice(firstScore).concat(players.slice(0, firstScore));
+
+            for (scorer of scorers) {
+                await updateScore(scorer, handNumber);
+            }
+
+            if (isAllPlayersMadeBid(handNumber)) {
+                alert("Invalid scores: All players cannot make their bid. Please revise.");
+                for (scorer of scorers) {
+                    scores[scorer][handNumber] = undefined; // Reset scores for the hand
+                }
+                drawScoreboard();
                 return;
             }
-            if (currentPlayerIndex === players.length - 1 && totalBids + bid === totalTricks) {
-                alert("Invalid bid. Last player's bid cannot make total equal tricks in hand.");
-                return;
-            }
-            bids[player][currentHandNumber] = bid;
-            totalBids += bid;
-            document.getElementById(`${player}-${currentHandNumber}`).textContent = `[${bid}]`;
-            currentPlayerIndex++;
-            if (currentPlayerIndex < players.length) {
-                showModal('bidModal');
-            } else {
-                closeModal('bidModal');
-                drawScoreboard();
-            }
+
+            dealerIndex += 1;
+            if (dealerIndex > players.length - 1) dealerIndex = 0;
+            closeModal('scoreModal');
         }
 
-        function enterScores(handNumber) {
-            if( bids[players[0]][handNumber] == undefined ) return alert("Bids must be entered first!");
-            if( scores[players[0]][handNumber] !== undefined ) {
-                dealerIndex--; // increment this down so the right player is asked first
-                currentHand--; // increment this down so it doesn't move forward
-            }
-            currentHandNumber = handNumber;
-            currentPlayerIndex = 0;
-            totalTricksClaimed = 0; // Reset total tricks claimed
-            showScoreModal();
+        async function updateScore(player, handNumber) {
+            return new Promise(resolve => {
+                let digits = handNumber.match(/\d+/);
+                let totalTricks = digits ? parseInt(digits[0]) : 0;
+
+                modalText = document.getElementById('scoreModalText');
+                modalText.innerHTML = `<b style="strong">${player}</b>, did you make your bid of <b>${bids[player][handNumber]}</b>?`;
+                modal = document.getElementById('scoreModal');
+                modal.style.display = 'block';
+
+                yesButton = document.getElementById('score-modal-yes');
+                yesButton.onclick = () => {
+                    scores[player][handNumber] = 10 + bids[player][handNumber];
+                    if (isAllPlayersMadeBid(handNumber)) {
+                        alert("Invalid update: All players cannot make their bid.");
+                        scores[player][handNumber] = undefined; // Reset this player's score
+                        drawScoreboard();
+                        return;
+                    }
+                    closeModal('scoreModal');
+                    resolve();
+                };
+
+                noButton = document.getElementById('score-modal-no');
+                noButton.onclick = () => {
+                    scores[player][handNumber] = 0;
+                    closeModal('scoreModal');
+                    resolve();
+                };
+            });
         }
 
-        function showScoreModal() {
-            let player = players[(dealerIndex + 1 + currentPlayerIndex) % players.length];
-            document.getElementById('scoreModalText').innerHTML = `${player}, did you make your bid of ${bids[player][currentHandNumber]}?`;
-            document.getElementById('scoreModal').style.display = 'block';
-        }
-
-        function submitScore(madeBid) {
-            let player = players[(dealerIndex + 1 + currentPlayerIndex) % players.length];
-            let bid = bids[player][currentHandNumber];
-            let digits = currentHandNumber.match(/\d+/);
-            let totalTricks = digits ? parseInt(digits[0]) : 0;
-            if (madeBid) {
-                totalTricksClaimed += bid;
-                if (totalTricksClaimed > totalTricks) {
-                    alert("Total tricks claimed exceed the total tricks available. Please re-enter scores.");
-                    totalTricksClaimed -= bid; // Revert the addition
-                    return;
-                }
-            }
-            let score = madeBid ? (10 + bid) : 0;
-            scores[player][currentHandNumber] = score;
-            currentPlayerIndex++;
-            if (currentPlayerIndex < players.length) {
-                showScoreModal();
-            } else {
-                // Edge case: All players bid zero and claim to have made their bids
-                let allBidsZero = players.every(player => bids[player][currentHandNumber] === 0);
-                let allMadeBids = players.every(player => scores[player][currentHandNumber] !== 0);
-                if (allBidsZero && allMadeBids) {
-                    alert("All players cannot bid zero and make their bids. Please re-enter scores.");
-                    totalTricksClaimed = 0; // Reset total tricks claimed
-                    currentPlayerIndex = 0; // Reset player index
-                    showScoreModal();
-                    return;
-                }
-                closeModal('scoreModal');
-                currentHand++;
-                dealerIndex++;
-                drawScoreboard();
-            }
-        }
 
         function toProperCase(str) {
             return str.replace(/\w\S*/g, function(txt) {
                 return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
             });
         }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+            drawScoreboard();
+        }
+
     </script>
 </body>
 </html>
