@@ -330,6 +330,22 @@
             return allMadeBid;
         }
 
+        function madeBidsExceedTricks(handNumber) {
+            let digits = handNumber.match(/\d+/);
+            let totalTricks = digits ? parseInt(digits[0]) : 0;
+            let totalTaken = 0;
+            for (let player of players) {
+                if( bids[player][handNumber] === 0 && scores[player][handNumber] < 10 ) {
+                    totalTaken += 1;
+                }
+                if( bids[player][handNumber] > 0 && scores[player][handNumber] > 10 ) {
+                    totalTaken += bids[player][handNumber];
+                }
+            }
+            return totalTaken > totalTricks;
+        }
+
+
         async function enterScores(handNumber) {
             let firstScore = dealerIndex + 1;
             if (firstScore > players.length - 1) firstScore = 0;
@@ -341,6 +357,14 @@
 
             if (isAllPlayersMadeBid(handNumber)) {
                 alert("Invalid scores: All players cannot make their bid. Please revise.");
+                for (scorer of scorers) {
+                    scores[scorer][handNumber] = undefined; // Reset scores for the hand
+                }
+                drawScoreboard();
+                return;
+            }
+            if( madeBidsExceedTricks(handNumber) ) {
+                alert("Invalid scores: Total tricks taken cannot exceed total tricks available. Please revise.");
                 for (scorer of scorers) {
                     scores[scorer][handNumber] = undefined; // Reset scores for the hand
                 }
