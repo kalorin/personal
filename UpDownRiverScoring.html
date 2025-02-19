@@ -30,13 +30,12 @@
         .bid-buttons button, .score-buttons button { margin: 5px; padding: 10px 20px; font-size: 18px; }
         .score-buttons .yes { background-color: lime; }
         .score-buttons .no { background-color: red; }
-        .green { background: radial-gradient(ellipse, white, green); }
-        .gold { background: radial-gradient(ellipse, white, gold ); }
-        .silver { background: radial-gradient(ellipse, white, silver ); }
-        .bronze { background: radial-gradient(ellipse, white, #cd7f32); }
-        .poop { background: radial-gradient(ellipse, white, rgb(128, 62, 0)); }
+        .green { background: radial-gradient(ellipse, white, green); z-index: 1; }
+        .gold { background: radial-gradient(ellipse, white, gold ); z-index: 1; }
+        .silver { background: radial-gradient(ellipse, white, silver ); z-index: 1; }
+        .bronze { background: radial-gradient(ellipse, white, #cd7f32); z-index: 1; }
+        .poop { background: radial-gradient(ellipse, white, rgb(128, 62, 0)); z-index: 1; }
         .rank { font-size: 32pt; transform: rotate(0deg); }
-        .dealer { box-shadow: 2px 5px 5px blue, 3px 3px 30px blue; z-index: 3; position: relative}
     </style>
 </head>
 <body>
@@ -222,6 +221,9 @@
                     playerHeader.classList.add("poop");
                 }
                 playerHeader.innerHTML += `<br><span class='playerName'>${toProperCase(player)}: ${playerScore}</span>`;
+                if( player === players[dealerIndex] ) {
+                    playerHeader.innerHTML += "<br><span class='rank'>&#x1F451</span>";
+                }
                 if (index === dealerIndex) playerHeader.classList.add("dealer");
                 row.appendChild(playerHeader);
             });
