@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scorekeeper</title>
+    <style>
+        #scoreboard {max-height: 70vh; overflow-y: auto; border: 1px solid black; display: block; }
+        #scoreTable { width: 100%; border-collapse: collapse; }
+        #scoreTable thead { position: sticky; top: 0; background-color: white; z-index: 10;}
+        body { font-family: Arial, sans-serif; text-align: center; }
+        .hidden { display: none; }
+        table { margin: auto; border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid black; padding: 8px; text-align: center; }
+        th { height: 100px; vertical-align: middle; align-items: center; padding: 10px;}
+        button { font-weight: bold; height: 40px; min-width: 75px; display: block; margin: auto; }
+        .playerHeader { writing-mode: vertical-lr; vertical-align: middle; text-align: center; justify-content: center; white-space: nowrap; min-width: 75px; margin: 0 auto; }
+        .strong { font-size: 1.3em; font-weight: bold; color: red; }
+        .success { background: linear-gradient( 90deg, white, lime ); }
+        .fail { background: linear-gradient( 90deg, white, red ); }
+        .clickable { cursor: pointer; background-color: lightgray; }
+        .bold { font-weight: bold; }
+        .controls { float: right; }
+        .clearfix::after { content: ""; clear: both; display: table; }
+        .modal { display: none; position: fixed; z-index: 1; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgb(0,0,0); background-color: rgba(0,0,0,0.4); }
+        .modal-content { background-color: #fefefe; margin: 15% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 400px; }
+        .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; }
+        .close:hover, .close:focus { color: black; text-decoration: none; cursor: pointer; }
+        .bid-buttons, .score-buttons { display: flex; flex-wrap: wrap; justify-content: center; }
+        .bid-buttons button, .score-buttons button { margin: 5px; padding: 10px 20px; font-size: 18px; }
+        .score-buttons .yes { background-color: lime; }
+        .score-buttons .no { background-color: red; }
+        .green { background: radial-gradient(ellipse, white, green); z-index: 1; }
+        .gold { background: radial-gradient(ellipse, white, gold ); z-index: 1; }
+        .silver { background: radial-gradient(ellipse, white, silver ); z-index: 1; }
+        .bronze { background: radial-gradient(ellipse, white, #cd7f32); z-index: 1; }
+        .poop { background: radial-gradient(ellipse, white, rgb(128, 62, 0)); z-index: 1; }
+        .rank { font-size: 32pt; transform: rotate(0deg); }
+        .score-buttons { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; justify-items: center; margin-top: 10px; }
+        .score-buttons button { width: 60px; height: 60px; font-size: 20px; }
+        .bottom-buttons { display: flex; justify-content: space-between; margin-top: 10px; }
+        .bottom-buttons button { flex: 1; margin: 0 5px; }
+        #score-input { font-size: 24px; font-weight: bold; padding: 3px; margin-bottom: 10px; border: 1px solid #000; display: inline-block; width: 100px; text-align: center; background: #fff; }
+    </style>
+</head>
+<body>
+    <div class="clearfix">
+        <h1 style="float: left;">Up the River Scorekeeper</h1>
+        <div class="controls">
+            <button onclick="startGame()" id="startButton" class="hidden">Start Game</button>
+            <button onclick="location.reload();">Restart</button>
+        </div>
+    </div>
+    <div id="playerSetup">
+        <button onclick="addPlayers()">Add Players</button>
+        <div id="playerList"></div>
+    </div>
+    <div id="scoreboard" class="hidden">
+        <div id="scoreboardContainer">
+            <table id="scoreTable">
+                <thead id="scoreHeader"></thead>
+                <tbody id="scoreBody"></tbody>
+            </table>
+        </div>
+    </div>
+    
+    <div id="score-modal" class="modal">
+        <div class="modal-content">
+            <h3>Enter <span id="scoreModalPlayer" class="strong"></span>'s Score</h3>
+            <div id="score-input">0</div>
+            <div class="score-buttons">
+                <button onclick="addDigit(1)">1</button>
+                <button onclick="addDigit(2)">2</button>
+                <button onclick="addDigit(3)">3</button>
+                <button onclick="addDigit(4)">4</button>
+                <button onclick="addDigit(5)">5</button>
+                <button onclick="addDigit(6)">6</button>
+                <button onclick="addDigit(7)">7</button>
+                <button onclick="addDigit(8)">8</button>
+                <button onclick="addDigit(9)">9</button>
+                <button onclick="clearScore()">C</button>
+                <button onclick="addDigit(0)">0</button>
+                <button onclick="submitScore()">✔</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let players = [];
+        let currentPlayer = null;
+        let currentHand = null;
+        let scores = {};
+        let hands = [ 1 ];
+
+        function addPlayers() {
+            let playerName;
+            while (true) {
+                playerName = prompt("Enter player name(s) (multiple with commas between each or press Cancel to finish):");
+                if (!playerName) break;
+                let pns = playerName.includes(",") 
+                           ? playerName.split(",").map(p => p.trim())  // Split, trim if comma exists
+                           : [playerName.trim()];  // Use as single value if no comma
+                pns.forEach( pn => {
+                    if (!players.includes(toProperCase(pn))) {
+                        players.push(toProperCase(pn));
+                    }
+                });
+            }
+            if (players.length > 0) {
+                playerList = document.getElementById("playerList");
+                playerList.innerHTML = '<h2>Player List</h2>';
+                players.forEach( player => {
+                    let h4 = document.createElement("h4"); // Create a new <h4> element
+                    h4.textContent = player; // Set the text content
+                    playerList.appendChild(h4); // Append <h4> to the div
+                });
+            }
+            if( players.length > 1 ) {
+                document.getElementById('startButton').classList.remove('hidden');
+            }
+        }
+
+        function startGame() {
+            if (players.length < 2) return alert("There aren't enough players to play, add more players!");
+            document.getElementById('playerSetup').classList.add('hidden');
+            document.getElementById('scoreboard').classList.remove('hidden');
+            // set up the player bids and scores 
+            for (let player of players) {
+                scores[player] = {};
+            }
+            dealerIndex = 0;
+            // set up the hands
+            hands = [ 1 ];
+            handNumber = 1;
+            drawScoreboard();
+        }
+        
+        function drawScoreboard() {
+            let scoreHeader = document.getElementById('scoreHeader');
+            scoreHeader.innerHTML = '';
+            let row = document.createElement('tr');
+            let handHeader = document.createElement('th');
+            handHeader.classList.add("green");
+            handHeader.textContent = 'Hand';
+            row.appendChild(handHeader);
+
+            players.map((player, index) => {
+                let playerHeader = document.createElement('th');
+                let playerRank = getPlayerRank(player);
+                let playerScore = getPlayerScore(player);
+                playerHeader.classList.add("playerHeader");
+                if (playerRank === 1) {
+                    playerHeader.innerHTML = "<span class='rank'>&#x1F947</span>";
+                    playerHeader.classList.add("gold");
+                } else if (playerRank === 2 && players.length > 2) {
+                    playerHeader.innerHTML = "<span class='rank'>&#x1F948</span>";
+                    playerHeader.classList.add("silver");
+                } else if (playerRank === 3 && players.length > 3) {
+                    playerHeader.innerHTML = "<span class='rank'>&#x1F949</span>";
+                    playerHeader.classList.add("bronze");
+                } 
+                if ( playerRank === players.length ) {
+                    playerHeader.innerHTML = "<span class='rank'>&#x1F4A9</span>";
+                    playerHeader.classList.add("poop");
+                }
+                playerHeader.innerHTML += `<br><span class='playerName'>${toProperCase(player)}: ${playerScore}</span>`;
+                if( player === players[dealerIndex] ) {
+                    playerHeader.innerHTML += "<br><span class='rank'>&#x1F451</span>";
+                }
+                if (index === dealerIndex) playerHeader.classList.add("dealer");
+                row.appendChild(playerHeader);
+            });
+            scoreHeader.appendChild(row);
+            
+            let scoreBody = document.getElementById('scoreBody');
+            scoreBody.innerHTML = '';
+
+            hands.forEach( hand => {
+                let row = document.createElement('tr');
+                let handCell = document.createElement('td');
+                handCell.innerHTML = `<button id='hand-button-${hand}' onclick='enterInfo("${hand}")'>${hand}</button>`;
+                row.appendChild(handCell);
+
+                players.forEach(player => {
+                    let playerCell = document.createElement('td');
+                    playerCell.id = `${player}-${hand}`;
+                    if( scores[player][hand] !== undefined ) {
+                        playerCell.innerHTML = `<button id='${player}-${hand}' onclick='updateScore("${player}", "${hand}")'>${scores[player][hand]}</button>`;
+                    } else {
+                        playerCell.innerHTML = `<button id='${player}-${hand}' onclick='updateScore("${player}", "${hand}")'></button>`;
+                    }
+                    row.appendChild(playerCell);
+                });
+                scoreBody.appendChild(row);
+            });
+        }
+
+        function enterInfo(handNumber) {
+            handIndex = hands.indexOf(handNumber);
+            if( scores[players[0]][handNumber] === undefined ) {
+                enterScores(handNumber);
+            }
+        }
+
+        async function enterScores(handNumber) {
+            let firstScore = dealerIndex + 1;
+            if (firstScore > players.length - 1) firstScore = 0;
+            let scorers = players.slice(firstScore).concat(players.slice(0, firstScore));
+
+            for (let scorer of scorers) {
+                await updateScore(scorer, handNumber);
+            }
+            let nextHand = parseInt(handNumber) + 1;
+            if( ! hands.includes(nextHand) ) {
+                hands.push(nextHand);
+                dealerIndex = (dealerIndex + 1) % players.length;
+            }
+            drawScoreboard();
+        }
+
+        async function updateScore(player, hand) {
+            return new Promise(resolve => {
+                currentPlayer = player;
+                currentHand = hand;
+                currentScore = '';
+                document.getElementById('scoreModalPlayer').innerText = player;
+                document.getElementById("score-input").innerText = '0';
+                document.getElementById("score-modal").style.display = "block";
+
+                // Overwrite submitScore to resolve the promise when score is submitted
+                window.submitScore = function () {
+                    if (currentScore === '') return;
+                    scores[currentPlayer][currentHand] = parseInt(currentScore);
+                    closeModal('score-modal');
+                    drawScoreboard();
+                    resolve(); // This tells enterScores() to continue
+                };
+            });
+        }
+
+        function addDigit(digit) {
+            currentScore += digit;
+            document.getElementById("score-input").innerText = currentScore;
+        }
+        
+        function clearScore() {
+            currentScore = '';
+            document.getElementById("score-input").innerText = '0';
+        }
+        
+        function submitScore() {
+            if (currentScore === '') return;
+            scores[currentPlayer][currentHand] = parseInt(currentScore);
+            closeModal('score-modal');
+            drawScoreboard();
+        }
+
+        function toProperCase(str) {
+            return str.replace(/\w\S*/g, function(txt) {
+                return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+            });
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+            drawScoreboard();
+        }
+
+        // return the total score for the player
+        function getPlayerScore(player) {
+            total = 0;
+            for( let hand of hands ) {
+                total += scores[player][hand] || 0;
+            }
+            return total;
+        }
+
+        // return the rank of the player
+        function getPlayerRank(player) {
+            let rank = 1;
+            let playerScore = getPlayerScore(player);
+            for( let otherPlayer of players ) {
+                if( otherPlayer === player ) continue;
+                if( getPlayerScore(otherPlayer) > playerScore ) rank++;
+            }
+            return rank;
+        }
+    </script>
+</body>
+</html>
