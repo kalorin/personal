@@ -45,12 +45,13 @@
 </head>
 <body>
     <div class="clearfix">
-        <h1 style="float: left;">Up the River Scorekeeper</h1>
+        <h1 style="float: left;">Score Tracker</h1>
         <div class="controls">
             <button onclick="startGame()" id="startButton" class="hidden">Start Game</button>
             <button onclick="location.reload();">Restart</button>
         </div>
     </div>
+    <label style="float: left;"><input type="checkbox" id="lowScoreWins" onclick="toggleLowScoreWins()"> Low Score Wins</label>
     <div id="playerSetup">
         <button onclick="addPlayers()">Add Players</button>
         <div id="playerList"></div>
@@ -91,6 +92,7 @@
         let currentHand = null;
         let scores = {};
         let hands = [ 1 ];
+        let lowScoreWins = false;
 
         function addPlayers() {
             let playerName;
@@ -178,7 +180,7 @@
             hands.forEach( hand => {
                 let row = document.createElement('tr');
                 let handCell = document.createElement('td');
-                handCell.innerHTML = `<button id='hand-button-${hand}' onclick='enterInfo("${hand}")'>${hand}</button>`;
+                handCell.innerHTML = `<button id='hand-button-${hand}' onclick='enterScores("${hand}")'>${hand}</button>`;
                 row.appendChild(handCell);
 
                 players.forEach(player => {
@@ -193,13 +195,6 @@
                 });
                 scoreBody.appendChild(row);
             });
-        }
-
-        function enterInfo(handNumber) {
-            handIndex = hands.indexOf(handNumber);
-            if( scores[players[0]][handNumber] === undefined ) {
-                enterScores(handNumber);
-            }
         }
 
         async function enterScores(handNumber) {
@@ -232,7 +227,6 @@
                     if (currentScore === '') return;
                     scores[currentPlayer][currentHand] = parseInt(currentScore);
                     closeModal('score-modal');
-                    drawScoreboard();
                     resolve(); // This tells enterScores() to continue
                 };
             });
@@ -266,6 +260,11 @@
             drawScoreboard();
         }
 
+        function toggleLowScoreWins() {
+            lowScoreWins = document.getElementById('lowScoreWins').checked;
+            drawScoreboard();
+        }
+
         // return the total score for the player
         function getPlayerScore(player) {
             total = 0;
@@ -281,7 +280,11 @@
             let playerScore = getPlayerScore(player);
             for( let otherPlayer of players ) {
                 if( otherPlayer === player ) continue;
-                if( getPlayerScore(otherPlayer) > playerScore ) rank++;
+                let otherPlayerScore = getPlayerScore(otherPlayer);
+                if ((lowScoreWins && otherPlayerScore < playerScore) || 
+                    (!lowScoreWins && otherPlayerScore > playerScore)) {
+                    rank++;
+                }
             }
             return rank;
         }
