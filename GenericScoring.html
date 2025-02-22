@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Scorekeeper</title>
     <style>
-        #scoreboard {max-height: 70vh; overflow-y: auto; border: 1px solid black; display: block; }
+        #scoreboard {max-height: 70vh; overflow-y: auto; border: 1px solid black; display: block;}
         #scoreTable { width: 100%; border-collapse: collapse; }
         #scoreTable thead { position: sticky; top: 0; background-color: white; z-index: 10;}
         body { font-family: Arial, sans-serif; text-align: center; }
@@ -22,7 +22,7 @@
         .bold { font-weight: bold; }
         .controls { float: right; }
         .clearfix::after { content: ""; clear: both; display: table; }
-        .modal { display: none; position: fixed; z-index: 1; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgb(0,0,0); background-color: rgba(0,0,0,0.4); }
+        .modal { display: none; position: fixed; z-index: 500; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgb(0,0,0); background-color: rgba(0,0,0,0.4); }
         .modal-content { background-color: #fefefe; margin: 15% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 400px; }
         .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; }
         .close:hover, .close:focus { color: black; text-decoration: none; cursor: pointer; }
@@ -45,13 +45,16 @@
 </head>
 <body>
     <div class="clearfix">
-        <h1 style="float: left;">Score Tracker</h1>
+        <div style="float: left;">
+        <h1>Generic Score Tracker</h1>
+        <label><input type="checkbox" id="lowScoreWins" onclick="toggleLowScoreWins()"> Low Score Wins</label>
+        </div>
         <div class="controls">
             <button onclick="startGame()" id="startButton" class="hidden">Start Game</button>
             <button onclick="location.reload();">Restart</button>
         </div>
     </div>
-    <label style="float: left;"><input type="checkbox" id="lowScoreWins" onclick="toggleLowScoreWins()"> Low Score Wins</label>
+
     <div id="playerSetup">
         <button onclick="addPlayers()">Add Players</button>
         <div id="playerList"></div>
@@ -67,7 +70,8 @@
     
     <div id="score-modal" class="modal">
         <div class="modal-content">
-            <h3>Enter <span id="scoreModalPlayer" class="strong"></span>'s Score</h3>
+            <span class="close" onclick="closeModal('score-modal')">&times;</span>
+            <h3>Enter <span id="scoreModalPlayer" class="strong"></span>'s Score for Hand <span id="scoreModalHand" class="strong"></span></h3>
             <div id="score-input">0</div>
             <div class="score-buttons">
                 <button onclick="addDigit(1)">1</button>
@@ -79,9 +83,9 @@
                 <button onclick="addDigit(7)">7</button>
                 <button onclick="addDigit(8)">8</button>
                 <button onclick="addDigit(9)">9</button>
-                <button onclick="clearScore()">C</button>
+                <button style="color: red" onclick="clearScore()">C</button>
                 <button onclick="addDigit(0)">0</button>
-                <button onclick="submitScore()">✔</button>
+                <button style="color: green" onclick="submitScore()">✔</button>
             </div>
         </div>
     </div>
@@ -219,6 +223,7 @@
                 currentHand = hand;
                 currentScore = '';
                 document.getElementById('scoreModalPlayer').innerText = player;
+                document.getElementById('scoreModalHand').innerText = hand;
                 document.getElementById("score-input").innerText = '0';
                 document.getElementById("score-modal").style.display = "block";
 
